@@ -1,0 +1,8 @@
+[submodule "ovoui.avalonia"]
+	path = ovoui.avalonia
+	url = https://github.com/tiouoo/ovoui.avalonia.git
+	branch = main
+[submodule "ovo.dotnet"]
+	path = ovo.dotnet
+	url = https://github.com/tiouoo/ovo.dotnet.git
+	branch = main
