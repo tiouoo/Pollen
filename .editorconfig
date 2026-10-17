@@ -1,0 +1,44 @@
+﻿root = true
+
+[*]
+charset = utf-8
+
+
+[*.cs]
+
+dotnet_diagnostic.CS8600.severity = none
+dotnet_diagnostic.CA1416.severity = none
+dotnet_diagnostic.CS8602.severity = none
+dotnet_diagnostic.CS8851.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1839.severity = none
+dotnet_diagnostic.IDE0090.severity = none
+dotnet_diagnostic.IDE0220.severity = none
+dotnet_diagnostic.IDE0044.severity = none
+
+# CS8601: 引用类型赋值可能为 null。
+dotnet_diagnostic.CS8601.severity = none
+
+# CS8603: 可能返回 null 引用。
+dotnet_diagnostic.CS8603.severity = none
+
+# CS8625: 无法将 null 字面量转换为非 null 的引用类型。
+dotnet_diagnostic.CS8625.severity = none
+
+# CS8618: 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
+dotnet_diagnostic.CS8618.severity = none
+
+# IDE1006: 命名样式
+dotnet_diagnostic.IDE1006.severity = none
+
+# CS8612: 类型中引用类型的为 Null 性与隐式实现的成员不匹配。
+dotnet_diagnostic.CS8612.severity = none
+
+# CS8767: 参数类型中引用类型的为 Null 性与隐式实现的成员不匹配(可能是由于为 Null 性特性)。
+dotnet_diagnostic.CS8767.severity = none
+
+# CS0642: 空语句可能有错误
+dotnet_diagnostic.CS0642.severity = none
+
+# IDE0063: 使用简单的 "using" 语句
+dotnet_diagnostic.IDE0063.severity = none
