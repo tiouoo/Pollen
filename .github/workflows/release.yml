@@ -197,8 +197,9 @@ jobs:
         run: |
           dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-ChildItem dist -Recurse -File).Count -ne 1) { throw 'Windows portable publish must contain only the executable.' }
           Rename-Item dist/Pollen.Desktop.exe Pollen.win.x64.portable.exe
-          Compress-Archive dist/* Pollen.win.x64.portable.zip
+          Compress-Archive dist/Pollen.win.x64.portable.exe Pollen.win.x64.portable.zip
       - uses: actions/upload-artifact@v7
         with:
           name: package-win-portable

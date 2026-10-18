@@ -9,6 +9,8 @@
         <IsAotCompatible>true</IsAotCompatible>
         <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
         <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
+        <CopyOutputSymbolsToPublishDirectory Condition="'$(Configuration)' == 'Release'">false</CopyOutputSymbolsToPublishDirectory>
+        <PublishDocumentationFiles Condition="'$(Configuration)' == 'Release'">false</PublishDocumentationFiles>
         <AssemblyTitle>Pollen</AssemblyTitle>
         <Title>Pollen</Title>
         <ApplicationIcon>..\..\assets\icon-pattern.ico</ApplicationIcon>
@@ -38,4 +40,5 @@
     <ItemGroup>
         <ProjectReference Include="..\Pollen\Pollen.csproj"/>
     </ItemGroup>
+    <Import Project="WindowsNativeBundle.targets" />
 </Project>

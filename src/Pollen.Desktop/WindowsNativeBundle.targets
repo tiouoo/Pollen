@@ -1,0 +1,38 @@
+<Project>
+    <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('win-'))">
+        <PollenWindowsNativeBundle>true</PollenWindowsNativeBundle>
+        <DefineConstants>$(DefineConstants);POLLEN_WINDOWS_NATIVE_BUNDLE</DefineConstants>
+    </PropertyGroup>
+
+    <!-- Resolve NuGet assets for the selected RID instead of depending on package versions or paths. -->
+    <Target Name="PollenEmbedWindowsNativeAssets" BeforeTargets="AssignTargetPaths"
+            DependsOnTargets="ResolveReferences" Condition="'$(PollenWindowsNativeBundle)' == 'true'">
+        <ItemGroup>
+            <_PollenBundledNative Include="@(NativeCopyLocalItems)" Condition="'%(Extension)' == '.dll'" />
+            <_PollenProjectReference Include="@(ReferenceCopyLocalPaths)"
+                                     Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference' and '%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
+            <_PollenDocumentationCandidate Include="@(_PollenProjectReference->'%(RootDir)%(Directory)%(Filename).xml')" />
+            <_PollenBundledDocumentation Include="@(_PollenDocumentationCandidate)" Condition="Exists('%(Identity)')" KeepDuplicates="false" />
+            <EmbeddedResource Include="@(_PollenBundledNative)" LogicalName="Pollen.Native.%(Filename)%(Extension)" />
+            <EmbeddedResource Include="@(_PollenBundledDocumentation)" LogicalName="Pollen.Documentation.%(Filename)%(Extension)" />
+        </ItemGroup>
+        <Error Condition="'@(_PollenBundledNative)' == ''" Text="No Windows native dependencies were found for the single executable." />
+    </Target>
+
+    <Target Name="PollenFilterPublishFiles" AfterTargets="ComputeFilesToPublish" Condition="'$(Configuration)' == 'Release'">
+        <ItemGroup>
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+            <ResolvedFileToPublish Remove="@(_PollenBundledNative)" />
+        </ItemGroup>
+    </Target>
+
+    <!-- Also remove leftovers when publishing into an existing directory. -->
+    <Target Name="PollenCleanPublishFiles" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+        <ItemGroup>
+            <_PollenStalePublishFile Include="$(PublishDir)**/*.pdb" />
+            <_PollenStalePublishFile Include="@(_PollenBundledNative->'$(PublishDir)%(Filename)%(Extension)')" />
+            <_PollenStalePublishFile Include="@(_PollenBundledDocumentation->'$(PublishDir)%(Filename)%(Extension)')" />
+        </ItemGroup>
+        <Delete Files="@(_PollenStalePublishFile)" />
+    </Target>
+</Project>

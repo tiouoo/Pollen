@@ -13,16 +13,21 @@ sealed class Program
     public static int Main(string[] args)
     {
         // Exercise the actual published application; normal startup has no test callbacks.
-        if (args.Length != 2 || args[0] != "--aot-smoke-test")
-            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        var smokeTest = args.Length == 2 && args[0] == "--aot-smoke-test";
 
         try
         {
+#if POLLEN_WINDOWS_NATIVE_BUNDLE
+            WindowsNativeBundle.Initialize();
+#endif
+            if (!smokeTest)
+                return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
             return BuildAvaloniaApp()
                 .AfterSetup(builder => AotSmokeTest.Attach(builder, args[1]))
                 .StartWithClassicDesktopLifetime(args);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (smokeTest)
         {
             File.WriteAllText(args[1], exception.ToString());
             return 1;

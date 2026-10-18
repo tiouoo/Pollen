@@ -1,7 +1,8 @@
 """Run the published desktop application's Native AOT regression checks."""
 
-import os
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -46,7 +47,16 @@ def main():
         for phase in phases:
             if phase == "repaired":
                 next(cache.rglob("*.dll")).write_bytes(b"corrupted cache regression check")
-            if run_application(executable, environment, results, report, phase) != 0:
+            if phase == "cold":
+                # All three processes start with the same empty cache to exercise atomic extraction.
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    runs = [pool.submit(run_application, executable, environment, results,
+                                        results / f"smoke-test-cold-{index}.txt", f"cold-{index}")
+                            for index in range(3)]
+                    exit_codes = [run.result() for run in runs]
+                if any(exit_codes):
+                    return 1
+            elif run_application(executable, environment, results, report, phase) != 0:
                 return 1
             if windows:
                 files = {str(path.relative_to(cache)): hashlib.sha256(path.read_bytes()).hexdigest()
