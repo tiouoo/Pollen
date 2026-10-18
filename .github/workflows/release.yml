@@ -433,8 +433,8 @@ jobs:
           make-latest: ${{ inputs.channel == 'release' }}
 
   gitcode:
-    # GitCode mirror repositories reject Release writes. Enable only for a writable, non-mirror repository.
-    if: vars.GITCODE_RELEASE_ENABLED == 'true'
+    # Match Portal: sync only the existing commit/nightly releases; stable releases stay on GitHub/CNB.
+    if: inputs.channel != 'release'
     needs: [prepare, publish]
     runs-on: ubuntu-latest
     steps:
