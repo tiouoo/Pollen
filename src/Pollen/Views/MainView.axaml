@@ -12,7 +12,7 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting^}"
+    <TextBlock x:Name="WelcomeText" Text="{Binding Greeting^}"
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 </UserControl>

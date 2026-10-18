@@ -149,7 +149,7 @@ jobs:
         run: |
           dotnet tool install -g KuiperZone.PupNet --version 1.8.0
           sudo apt-get update
-          sudo apt-get install -y fuse rpm
+          sudo apt-get install -y fuse rpm clang zlib1g-dev
       - name: Package Linux x64
         working-directory: assets/conf
         env:
@@ -195,10 +195,10 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Rename-Item dist/Pollen.Desktop.exe Pollen.win.x64.portable.exe
-          Compress-Archive dist/Pollen.win.x64.portable.exe Pollen.win.x64.portable.zip
+          Compress-Archive dist/* Pollen.win.x64.portable.zip
       - uses: actions/upload-artifact@v7
         with:
           name: package-win-portable
@@ -272,11 +272,15 @@ jobs:
       POLLEN_PACKAGE_TYPE: app
     needs: prepare
     if: needs.prepare.outputs.enabled == 'true'
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, arm64]
+        include:
+          - os: macos-15-intel
+            arch: x64
+          - os: macos-15
+            arch: arm64
     steps:
       - uses: actions/checkout@v7
         with:
@@ -300,7 +304,7 @@ jobs:
           IFS=. read -r major minor patch minute <<< "$version"
           bundle_version="$version"
           [ -z "${minute:-}" ] || bundle_version="${major}.${minor}.$((10#$patch * 60 + 10#$minute))"
-          dotnet restore src/Pollen.Desktop/Pollen.Desktop.csproj -r "$rid"
+          dotnet restore src/Pollen.Desktop/Pollen.Desktop.csproj -r "$rid" -p:Configuration=Release
           dotnet msbuild src/Pollen.Desktop/Pollen.Desktop.csproj -t:BundleApp \
             -p:RuntimeIdentifier="$rid" -p:Configuration=Release -p:SelfContained=true \
             -p:Version="$version" -p:CFBundleVersion="$bundle_version" -p:CFBundleShortVersionString="$bundle_version" \
@@ -355,7 +359,7 @@ jobs:
             printf '%s\n发布日期：%s\n基准提交：`%s`\n\n' "$TITLE" "$RELEASE_DATE" "$SOURCE_SHA"
             cat RELEASE_CHANGELOG.md
           } > RELEASE_BODY.md
-          (cd Pollen.Release && sha256sum *.zip *.dmg *.AppImage *.deb *.rpm > SHA256SUMS)
+          (cd Pollen.Release && sha256sum *.zip *.dmg *.AppImage *.deb *.rpm > Sha256.txt)
       - name: Replace moving release
         if: inputs.channel != 'release'
         env:
@@ -385,7 +389,7 @@ jobs:
             Pollen.Release/*.AppImage
             Pollen.Release/*.deb
             Pollen.Release/*.rpm
-            Pollen.Release/SHA256SUMS
+            Pollen.Release/Sha256.txt
       - name: Bundle all packages
         env:
           VERSION: ${{ needs.prepare.outputs.app_version }}

@@ -1,0 +1,84 @@
+name: test/aot
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: test-aot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            executable: Pollen.Desktop.exe
+          - os: ubuntu-22.04
+            rid: linux-x64
+            executable: Pollen.Desktop
+          - os: macos-15-intel
+            rid: osx-x64
+            executable: Pollen.Desktop
+          - os: macos-15
+            rid: osx-arm64
+            executable: Pollen.Desktop
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+      - name: Install Native AOT and display dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev xvfb libx11-6 libice6 libsm6 libfontconfig1 libgl1
+      - name: Publish Native AOT application
+        env:
+          RID: ${{ matrix.rid }}
+          POLLEN_BUILD_TYPE: aot-test
+          POLLEN_BUILD_VERSION: 9.8.7
+          POLLEN_BUILD_COMMIT: aot-smoke-commit
+          POLLEN_PACKAGE_TYPE: aot-test
+          POLLEN_BUILD_TIME: '2026-10-18 00:00:00'
+          POLLEN_BUILD_ACTION: aot-smoke-action
+          POLLEN_BUILD_TIMESTAMP: '202610180000'
+          POLLEN_BUILD_VERSION_TITLE: aot-smoke-title
+        run: |
+          set -o pipefail
+          mkdir -p test-results/aot
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" \
+            --self-contained true -p:Version=9.8.7 -p:PollenBaseVersion=1.0.0 \
+            -p:DebugType=none -p:DebugSymbols=false -p:TreatWarningsAsErrors=true \
+            -o dist 2>&1 | tee test-results/aot/publish.txt
+      - name: Run published application checks
+        env:
+          EXECUTABLE: ${{ matrix.executable }}
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run -a python scripts/test-aot.py "dist/$EXECUTABLE"
+          else
+            python scripts/test-aot.py "dist/$EXECUTABLE"
+          fi
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: aot-test-${{ matrix.rid }}
+          path: test-results/aot/
+          retention-days: 7
+          if-no-files-found: warn
