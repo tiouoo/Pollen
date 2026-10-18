@@ -28,6 +28,7 @@ jobs:
       previous_tag: ${{ steps.values.outputs.previous_tag }}
       version_json: ${{ steps.metadata.outputs.json }}
       release_date: ${{ steps.metadata.outputs.release-date }}
+      aur_packages: ${{ steps.source.outputs.aur_packages }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,6 +41,11 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           case "$CHANNEL" in release|commit|nightly) ;; *) exit 1 ;; esac
+          case "$CHANNEL" in
+            release) echo 'aur_packages=["pollen-bin","pollen","pollen-mc","pollen-stable","pollen-stable-bin"]' >> "$GITHUB_OUTPUT" ;;
+            commit) echo 'aur_packages=["pollen-commit-bin","pollen-commit"]' >> "$GITHUB_OUTPUT" ;;
+            nightly) echo 'aur_packages=["pollen-nightly-bin","pollen-nightly"]' >> "$GITHUB_OUTPUT" ;;
+          esac
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
           echo "timestamp=$(TZ=Asia/Shanghai date +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
@@ -435,12 +441,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           { printf '> 安装包下载：[GitHub Release](%s/%s/releases/tag/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$TAG"; cat RELEASE_BODY.md; } > RELEASE_SYNC_BODY.md
-      - uses: tiouoo/tiller/gitcode-tag@main
-        with:
-          token: ${{ secrets.GITCODE_TOKEN }}
-          repository: ${{ vars.GITCODE_REPOSITORY || 'tiouo/Pollen' }}
-          tag: ${{ needs.prepare.outputs.tag }}
-          commit: ${{ needs.prepare.outputs.sha }}
+      # GitCode 镜像仓库由镜像同步标签；这里只更新 Release。
       - uses: tiouoo/tiller/gitcode-release@main
         with:
           token: ${{ secrets.GITCODE_TOKEN }}
@@ -452,6 +453,10 @@ jobs:
 
   aur:
     needs: [prepare, publish]
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.prepare.outputs.aur_packages) }}
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
@@ -463,34 +468,16 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
       - name: Prepare AUR package
-        id: package
         env:
+          PACKAGE: ${{ matrix.package }}
           CHANNEL: ${{ inputs.channel }}
           TAG: ${{ needs.prepare.outputs.tag }}
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
-        run: |
-          package="pollen-${CHANNEL}-bin"
-          provides="'pollen-${CHANNEL}=${APP_VERSION}'"
-          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Pollen.linux.x64.AppImage"
-          sha=SKIP
-          mkdir -p dist/aur
-          cp assets/icon-pattern-128.png dist/aur/pollen.png
-          cp .github/.packaging/linux/pollen.desktop dist/aur/
-          cp LICENSE dist/aur/
-          if [ "$CHANNEL" = release ]; then
-            package=pollen-bin
-            provides="'pollen=${APP_VERSION}' 'pollen-mc=${APP_VERSION}' 'pollen-stable=${APP_VERSION}' 'pollen-stable-bin=${APP_VERSION}'"
-            curl -fL --retry 3 -o dist/Pollen.AppImage "$url"
-            sha=$(sha256sum dist/Pollen.AppImage | cut -d' ' -f1)
-          fi
-          sed -e "s|@PACKAGE@|$package|g" -e "s|@VERSION@|$APP_VERSION|g" \
-              -e "s|@URL@|$url|g" -e "s|@PROVIDES@|$provides|g" \
-              -e "s|@SHA@|$sha|g" .github/.packaging/aur/PKGBUILD.in > dist/aur/PKGBUILD
-          echo "name=$package" >> "$GITHUB_OUTPUT"
+        run: bash .github/.packaging/aur/prepare.sh
       - uses: tiouoo/tiller/aur@main
         with:
           package-directory: dist/aur
-          package-name: ${{ steps.package.outputs.name }}
+          package-name: ${{ matrix.package }}
           ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           username: ${{ secrets.AUR_USERNAME }}
-          commit-message: Update ${{ steps.package.outputs.name }} to ${{ needs.prepare.outputs.app_version }}
+          commit-message: Update ${{ matrix.package }} to ${{ needs.prepare.outputs.app_version }}
