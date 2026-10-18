@@ -1,6 +1,7 @@
 """Run the published desktop application's Native AOT regression checks."""
 
 from concurrent.futures import ThreadPoolExecutor
+import argparse
 import hashlib
 import os
 from pathlib import Path
@@ -14,8 +15,12 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-    executable = Path(sys.argv[1]).resolve(strict=True)
-    results = Path("test-results/aot").resolve()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("executable")
+    parser.add_argument("--installer", action="store_true", help="Check Windows EXE with native DLL sidecars")
+    args = parser.parse_args()
+    executable = Path(args.executable).resolve(strict=True)
+    results = Path("test-results/aot/installer" if args.installer else "test-results/aot").resolve()
     results.mkdir(parents=True, exist_ok=True)
     report = results / "smoke-test.txt"
     report.unlink(missing_ok=True)
@@ -24,7 +29,11 @@ def main():
         print("FAIL: publish directory contains PDB files.", file=sys.stderr)
         return 1
     windows = sys.platform == "win32"
-    if windows and list(executable.parent.iterdir()) != [executable]:
+    bundled = windows and not args.installer
+    if args.installer and (not windows or not list(executable.parent.glob("*.dll"))):
+        print("FAIL: Windows installer publish must contain native DLLs.", file=sys.stderr)
+        return 1
+    if bundled and list(executable.parent.iterdir()) != [executable]:
         print("FAIL: Windows publish must contain only the executable.", file=sys.stderr)
         return 1
 
@@ -43,7 +52,7 @@ def main():
         environment["DOTNET_BUNDLE_EXTRACT_BASE_DIR"] = temporary
         cache = Path(temporary)
         snapshot = None
-        phases = ("cold", "warm", "repaired") if windows else ("smoke",)
+        phases = ("cold", "warm", "repaired") if bundled else ("smoke",)
         for phase in phases:
             if phase == "repaired":
                 next(cache.rglob("*.dll")).write_bytes(b"corrupted cache regression check")
@@ -58,7 +67,10 @@ def main():
                     return 1
             elif run_application(executable, environment, results, report, phase) != 0:
                 return 1
-            if windows:
+            if args.installer and list(cache.iterdir()):
+                print("FAIL: installer application unexpectedly extracted native dependencies.", file=sys.stderr)
+                return 1
+            if bundled:
                 files = {str(path.relative_to(cache)): hashlib.sha256(path.read_bytes()).hexdigest()
                          for path in cache.rglob("*.dll")}
                 if not files or (snapshot is not None and files != snapshot):

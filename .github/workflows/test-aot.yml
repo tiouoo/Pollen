@@ -20,15 +20,33 @@ jobs:
           - os: windows-latest
             rid: win-x64
             executable: Pollen.Desktop.exe
+            layout: portable
+            bundle: 'true'
+            test_args: ''
+          - os: windows-latest
+            rid: win-x64
+            executable: Pollen.Desktop.exe
+            layout: installer
+            bundle: 'false'
+            test_args: '--installer'
           - os: ubuntu-22.04
             rid: linux-x64
             executable: Pollen.Desktop
+            layout: native
+            bundle: 'false'
+            test_args: ''
           - os: macos-15-intel
             rid: osx-x64
             executable: Pollen.Desktop
+            layout: native
+            bundle: 'false'
+            test_args: ''
           - os: macos-15
             rid: osx-arm64
             executable: Pollen.Desktop
+            layout: native
+            bundle: 'false'
+            test_args: ''
     defaults:
       run:
         shell: bash
@@ -50,6 +68,7 @@ jobs:
       - name: Publish Native AOT application
         env:
           RID: ${{ matrix.rid }}
+          NATIVE_BUNDLE: ${{ matrix.bundle }}
           POLLEN_BUILD_TYPE: aot-test
           POLLEN_BUILD_VERSION: 9.8.7
           POLLEN_BUILD_COMMIT: aot-smoke-commit
@@ -64,18 +83,20 @@ jobs:
           dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" \
             --self-contained true -p:Version=9.8.7 -p:PollenBaseVersion=1.0.0 \
             -p:DebugType=none -p:DebugSymbols=false -p:TreatWarningsAsErrors=true \
+            -p:PollenWindowsNativeBundle="$NATIVE_BUNDLE" \
             -o dist 2>&1 | tee test-results/aot/publish.txt
       - name: Run published application checks
         env:
           EXECUTABLE: ${{ matrix.executable }}
+          TEST_ARGS: ${{ matrix.test_args }}
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a python scripts/test-aot.py "dist/$EXECUTABLE"
+            xvfb-run -a python scripts/test-aot.py "dist/$EXECUTABLE" $TEST_ARGS
           else
-            python scripts/test-aot.py "dist/$EXECUTABLE"
+            python scripts/test-aot.py "dist/$EXECUTABLE" $TEST_ARGS
           fi
       - name: Compile Windows installer
-        if: runner.os == 'Windows'
+        if: matrix.layout == 'installer'
         shell: pwsh
         run: |
           choco install innosetup --version=6.7.3 -y
@@ -86,7 +107,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: aot-test-${{ matrix.rid }}
+          name: aot-test-${{ matrix.rid }}-${{ matrix.layout }}
           path: test-results/aot/
           retention-days: 7
           if-no-files-found: warn

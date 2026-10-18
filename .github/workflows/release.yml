@@ -242,9 +242,10 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -p:PollenWindowsNativeBundle=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ((Get-ChildItem dist -Recurse -File).Count -ne 1) { throw 'Windows installer publish must contain only the executable.' }
+          if (!(Test-Path dist/Pollen.Desktop.exe) -or !(Get-ChildItem dist -Filter *.dll)) { throw 'Windows installer publish must contain the executable and native DLLs.' }
+          if (Get-ChildItem dist -Recurse -Filter *.pdb) { throw 'Windows installer publish must not contain PDB files.' }
           iscc "/DAppVersion=$env:APP_VERSION" "/DPublishDir=$((Resolve-Path dist).Path)" assets/conf/Pollen.Desktop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Compress-Archive assets/conf/Deploy/OUT/Pollen.win.x64.installer.exe assets/conf/Deploy/OUT/Pollen.win.x64.installer.zip

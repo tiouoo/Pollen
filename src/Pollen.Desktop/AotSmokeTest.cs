@@ -41,7 +41,7 @@ internal sealed class AotSmokeTest(IClassicDesktopStyleApplicationLifetime deskt
     private void CheckApplication()
     {
         Check(!RuntimeFeature.IsDynamicCodeSupported, "Native AOT runtime (no dynamic code)");
-#if POLLEN_WINDOWS_NATIVE_BUNDLE
+#if POLLEN_WINDOWS_AOT
         using (var documentation = typeof(AotSmokeTest).Assembly.GetManifestResourceStream("Pollen.Documentation.OvoUi.Lang.xml"))
             Check(documentation is { Length: > 0 }, "XML documentation embedded in the executable");
 #endif

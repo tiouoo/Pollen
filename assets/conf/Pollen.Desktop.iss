@@ -1,4 +1,4 @@
-; Compile the published Native AOT executable directly; no DLL sidecars are required.
+; Installer builds keep native dependencies beside the Native AOT executable.
 #ifndef AppVersion
   #error AppVersion must be supplied with /DAppVersion
 #endif
@@ -38,6 +38,7 @@ Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [Files]
 Source: "{#PublishDir}\Pollen.Desktop.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PublishDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
