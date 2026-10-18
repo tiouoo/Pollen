@@ -433,7 +433,7 @@ jobs:
           make-latest: ${{ inputs.channel == 'release' }}
 
   gitcode:
-    # Match Portal: sync only the existing commit/nightly releases; stable releases stay on GitHub/CNB.
+    # Match Portal: update existing rolling releases; mirror repositories may reject creation.
     if: inputs.channel != 'release'
     needs: [prepare, publish]
     runs-on: ubuntu-latest
@@ -450,7 +450,15 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           { printf '> 安装包下载：[GitHub Release](%s/%s/releases/tag/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$TAG"; cat RELEASE_BODY.md; } > RELEASE_SYNC_BODY.md
+      - name: Check existing GitCode release
+        id: gitcode-release
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_REPO: ${{ vars.GITCODE_REPOSITORY || 'tiouo/Pollen' }}
+          GITCODE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: python3 scripts/check-gitcode-release.py
       - uses: tiouoo/tiller/gitcode-release@main
+        if: steps.gitcode-release.outputs.exists == 'true'
         with:
           token: ${{ secrets.GITCODE_TOKEN }}
           repository: ${{ vars.GITCODE_REPOSITORY || 'tiouo/Pollen' }}
