@@ -10,3 +10,7 @@
 	path = pollen.localization
 	url = https://github.com/tiouoo/pollen.localization.git
 	branch = main
+[submodule "holium"]
+	path = holium
+	url = https://github.com/tiouoo/holium.git
+	branch = main
