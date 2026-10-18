@@ -1,5 +1,8 @@
 # AGENTS.md
 
+## 提交与署名
+- 除非用户明确要求，否则禁止自行提交（commit）或推送（push）。禁止将 AI 助手自身信息加入作者、共同作者或合作者信息，包括 `Co-authored-by` 署名。
+
 ## 异步任务与 UI
 - 长时间操作必须支持取消：使用 ovo.dotnet 的 `Standard.Mvvm.Tasks.TaskManager`，将 `TaskExecutionContext.CancellationToken` 传递到所有下游异步 API；循环和阶段切换时检查取消，不吞掉取消异常，不继续启动后续步骤。取消父任务以联动子任务。
 - 文件下载需持续报告进度（0–1）、已下载量和下载速度；总长度未知时使用不确定进度。合理节流，避免刷屏。
