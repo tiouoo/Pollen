@@ -48,7 +48,7 @@ jobs:
           else
             echo 'enabled=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Calculate stable version (Portal carry rule)
+      - name: Calculate stable version
         if: inputs.channel == 'release'
         id: stable
         uses: tiouoo/tiller/version@main
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Update submodules as in Portal
+      - name: Update submodules
         run: |
           git submodule update --init --recursive
           git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
@@ -475,7 +475,7 @@ jobs:
           sha=SKIP
           mkdir -p dist/aur
           cp assets/icon-pattern-128.png dist/aur/pollen.png
-          cp packaging/linux/pollen.desktop dist/aur/
+          cp .github/.packaging/linux/pollen.desktop dist/aur/
           cp LICENSE dist/aur/
           if [ "$CHANNEL" = release ]; then
             package=pollen-bin
@@ -485,7 +485,7 @@ jobs:
           fi
           sed -e "s|@PACKAGE@|$package|g" -e "s|@VERSION@|$APP_VERSION|g" \
               -e "s|@URL@|$url|g" -e "s|@PROVIDES@|$provides|g" \
-              -e "s|@SHA@|$sha|g" packaging/aur/PKGBUILD.in > dist/aur/PKGBUILD
+              -e "s|@SHA@|$sha|g" .github/.packaging/aur/PKGBUILD.in > dist/aur/PKGBUILD
           echo "name=$package" >> "$GITHUB_OUTPUT"
       - uses: tiouoo/tiller/aur@main
         with:

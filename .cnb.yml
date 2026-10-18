@@ -1,0 +1,11 @@
+main:
+  'crontab: */15 * * * *':
+    - name: Sync source from GitHub
+      stages:
+        - name: Mirror GitHub repository
+          script: bash .cnb/sync-mirror.sh
+  web_trigger_sync:
+    - name: Sync source from GitHub (manual)
+      stages:
+        - name: Mirror GitHub repository
+          script: bash .cnb/sync-mirror.sh

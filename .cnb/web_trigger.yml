@@ -1,0 +1,5 @@
+branch:
+  - buttons:
+      - name: 立即同步 GitHub
+        description: 立即把 GitHub 的分支与标签镜像同步到该 CNB 仓库
+        event: web_trigger_sync

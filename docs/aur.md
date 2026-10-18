@@ -38,7 +38,7 @@ yay -S pollen-bin
 - 使用本机 `C:\Users\84067\.ssh\aur` 验证 SSH，AUR 返回账号 `tiouo`；未读取或复制私钥内容。
 - AUR RPC 查询 `pollen`、`polllen-mc`、`pollen-bin`、`pollen-stable`、`pollen-stable-bin`，未返回现存包。查询不代表名称已被保留，也不能保证发布时仍可用。
 - GitHub Releases API 未返回可发布的 Release，尚无正式版 Linux 二进制附件可供编写和验证实际安装配方。
-- **尚未向 AUR 上传任何包，未占用任何名称。** 渠道配方模板位于 `packaging/aur/PKGBUILD.in`，由发布工作流填入真实版本、下载地址和校验和。
+- **尚未向 AUR 上传任何包，未占用任何名称。** 渠道配方模板位于 `.github/.packaging/aur/PKGBUILD.in`，由发布工作流填入真实版本、下载地址和校验和。
 
 ## 首次正式发布
 
