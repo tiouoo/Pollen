@@ -16,6 +16,7 @@
         <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
 
         <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageVersion Include="DotNet.Bundle" Version="0.9.13" />
 
         <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
     </ItemGroup>

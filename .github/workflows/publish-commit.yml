@@ -1,0 +1,16 @@
+name: publish/commit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: publish-commit
+  cancel-in-progress: true
+jobs:
+  release:
+    uses: ./.github/workflows/release.yml
+    with:
+      channel: commit
+    secrets: inherit

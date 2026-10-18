@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
@@ -7,6 +7,9 @@
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
+        <AvaloniaResource Include="..\..\assets\conf\version.txt" Link="Assets\Build\version.txt"/>
+        <AvaloniaResource Include="..\..\assets\conf\version-ci.txt" Link="Assets\Build\version-ci.txt"/>
+        <AvaloniaResource Include="..\..\assets\conf\package-type.txt" Link="Assets\Build\package-type.txt"/>
     </ItemGroup>
 
     <ItemGroup>

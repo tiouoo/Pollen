@@ -1,0 +1,74 @@
+name: build/pr
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: build-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.version }}
+      version_json: ${{ steps.metadata.outputs.json }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        uses: tiouoo/tiller/rolling-version@main
+        with:
+          epoch: '2026-07-10 00:00:00'
+      - id: source
+        run: |
+          echo "commit=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "base_version=$(tr -d '[:space:]' < assets/conf/version.txt)" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(TZ=Asia/Shanghai date +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - id: metadata
+        uses: tiouoo/tiller/metadata@main
+        with:
+          type: pr
+          version: ${{ steps.source.outputs.base_version }}
+          commit: ${{ steps.source.outputs.commit }}
+          title: build-pr-${{ github.event.pull_request.number }}-${{ steps.version.outputs.version }}-${{ github.run_id }}-${{ steps.source.outputs.commit }}
+          timestamp: ${{ steps.source.outputs.timestamp }}
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-22.04
+            rid: linux-x64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Write embedded metadata
+        shell: bash
+        env:
+          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
+          PACKAGE_TYPE: pr
+        run: |
+          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
+          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
+      - name: Build PR
+        shell: bash
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+          RID: ${{ matrix.rid }}
+        run: |
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" --self-contained false -p:Version="$APP_VERSION" -p:DebugType=none -p:DebugSymbols=false -o dist
+          tar -czf "Pollen.${RID}.PR.tar.gz" -C dist .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Pollen.${{ matrix.rid }}.PR-${{ github.event.pull_request.number }}
+          path: Pollen.${{ matrix.rid }}.PR.tar.gz
+          retention-days: 7
+          if-no-files-found: error

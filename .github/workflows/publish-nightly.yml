@@ -1,0 +1,17 @@
+name: publish/nightly
+on:
+  workflow_dispatch:
+  schedule:
+    # 与 Portal 一致：北京时间每日 04:00。
+    - cron: '0 20 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: publish-nightly
+  cancel-in-progress: true
+jobs:
+  release:
+    uses: ./.github/workflows/release.yml
+    with:
+      channel: nightly
+    secrets: inherit

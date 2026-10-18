@@ -1,10 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <!--If you are willing to use platform-specific APIs, use conditional compilation.
         See https://docs.avaloniaui.net/docs/guides/platforms/platform-specific-code/dotnet for more details.-->
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
+        <AssemblyTitle>Pollen</AssemblyTitle>
+        <Title>Pollen</Title>
+        <ApplicationIcon>..\..\assets\icon-pattern.ico</ApplicationIcon>
+        <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/tiouoo/Pollen</RepositoryUrl>
+        <CFBundleName>Pollen</CFBundleName>
+        <CFBundleDisplayName>Pollen</CFBundleDisplayName>
+        <CFBundleIdentifier>cc.tiouoo.pollen</CFBundleIdentifier>
+        <CFBundleVersion>$(Version)</CFBundleVersion>
+        <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
+        <CFBundlePackageType>APPL</CFBundlePackageType>
+        <CFBundleExecutable>Pollen.Desktop</CFBundleExecutable>
+        <CFBundleIconFile>icon-pattern-ahadow-border.icns</CFBundleIconFile>
+        <NSPrincipalClass>NSApplication</NSPrincipalClass>
+        <NSHighResolutionCapable>true</NSHighResolutionCapable>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -13,6 +28,7 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop"/>
+        <PackageReference Include="DotNet.Bundle"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -1,0 +1,20 @@
+name: publish/release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 版本号（留空自动递增；stable 与正式版共用）
+        type: string
+        default: ''
+permissions:
+  contents: write
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+jobs:
+  release:
+    uses: ./.github/workflows/release.yml
+    with:
+      channel: release
+      version: ${{ inputs.version }}
+    secrets: inherit

@@ -1,0 +1,496 @@
+name: release pipeline
+on:
+  workflow_call:
+    inputs:
+      channel:
+        required: true
+        type: string
+      version:
+        type: string
+        default: ''
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      enabled: ${{ steps.source.outputs.enabled }}
+      sha: ${{ steps.source.outputs.sha }}
+      commit: ${{ steps.source.outputs.commit }}
+      app_version: ${{ steps.values.outputs.app_version }}
+      tag: ${{ steps.values.outputs.tag }}
+      title: ${{ steps.values.outputs.title }}
+      previous_tag: ${{ steps.values.outputs.previous_tag }}
+      version_json: ${{ steps.metadata.outputs.json }}
+      release_date: ${{ steps.metadata.outputs.release-date }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Resolve source and skip unchanged scheduled builds
+        id: source
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          case "$CHANNEL" in release|commit|nightly) ;; *) exit 1 ;; esac
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(TZ=Asia/Shanghai date +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = schedule ] && [ -z "$(git log --since='24 hours ago' --format=%H -1)" ]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Calculate stable version (Portal carry rule)
+        if: inputs.channel == 'release'
+        id: stable
+        uses: tiouoo/tiller/version@main
+        with:
+          version: ${{ inputs.version }}
+          minor-limit: '9'
+      - name: Calculate rolling version
+        if: inputs.channel != 'release' && steps.source.outputs.enabled == 'true'
+        id: rolling
+        uses: tiouoo/tiller/rolling-version@main
+        with:
+          epoch: '2026-07-10 00:00:00'
+      - name: Select channel values
+        if: steps.source.outputs.enabled == 'true'
+        id: values
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          STABLE_VERSION: ${{ steps.stable.outputs.version }}
+          STABLE_TAG: ${{ steps.stable.outputs.tag }}
+          PREVIOUS_TAG: ${{ steps.stable.outputs.previous-tag }}
+          ROLLING_VERSION: ${{ steps.rolling.outputs.version }}
+          COMMIT: ${{ steps.source.outputs.commit }}
+        run: |
+          if [ "$CHANNEL" = release ]; then
+            version="$STABLE_VERSION"
+            tag="$STABLE_TAG"
+            title="Pollen v${version}"
+            base_version="$version"
+          else
+            version="$ROLLING_VERSION"
+            tag="publish-${CHANNEL}"
+            title="build-${CHANNEL}-${version}-${GITHUB_RUN_ID}-${COMMIT}"
+            base_version="$(tr -d '[:space:]' < assets/conf/version.txt)"
+          fi
+          {
+            echo "app_version=$version"
+            echo "tag=$tag"
+            echo "title=$title"
+            echo "base_version=$base_version"
+            echo "previous_tag=$PREVIOUS_TAG"
+          } >> "$GITHUB_OUTPUT"
+      - name: Format embedded build metadata
+        if: steps.source.outputs.enabled == 'true'
+        id: metadata
+        uses: tiouoo/tiller/metadata@main
+        with:
+          type: ${{ inputs.channel }}
+          version: ${{ steps.values.outputs.base_version }}
+          commit: ${{ steps.source.outputs.commit }}
+          title: ${{ steps.values.outputs.title }}
+          timestamp: ${{ inputs.channel != 'release' && steps.source.outputs.timestamp || '' }}
+      - name: Create version tag
+        if: inputs.channel == 'release'
+        env:
+          TAG: ${{ steps.stable.outputs.tag }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          git tag "$TAG" "$SOURCE_SHA"
+          git push origin "refs/tags/$TAG"
+
+  linux-package:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [appimage, deb, rpm]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Update submodules as in Portal
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
+          git submodule status --recursive
+      - name: Write embedded metadata
+        env:
+          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
+          PACKAGE_TYPE: ${{ matrix.kind }}
+        run: |
+          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
+          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
+      - name: Install packaging dependencies
+        run: |
+          dotnet tool install -g KuiperZone.PupNet --version 1.8.0
+          sudo apt-get update
+          sudo apt-get install -y fuse rpm
+      - name: Package Linux x64
+        working-directory: assets/conf
+        env:
+          KIND: ${{ matrix.kind }}
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          extension="$KIND"
+          [ "$KIND" != appimage ] || extension=AppImage
+          pupnet --runtime linux-x64 --kind "$KIND" -y --app-version "$APP_VERSION" -o "Pollen.linux.x64.$extension"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-linux-${{ matrix.kind }}
+          path: assets/conf/Deploy/OUT/Pollen.linux.x64.*
+          if-no-files-found: error
+
+  win-exe:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Update submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
+      - name: Write embedded metadata
+        env:
+          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
+          PACKAGE_TYPE: portable
+        run: |
+          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
+          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
+      - name: Package Windows portable
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Rename-Item dist/Pollen.Desktop.exe Pollen.win.x64.portable.exe
+          Compress-Archive dist/Pollen.win.x64.portable.exe Pollen.win.x64.portable.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-win-portable
+          path: Pollen.win.x64.portable.zip
+          if-no-files-found: error
+
+  win-installer:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Update submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
+      - name: Install packaging dependencies
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          'C:/Program Files (x86)/Inno Setup 6' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          dotnet tool install -g KuiperZone.PupNet --version 1.8.0
+      - name: Use Simplified Chinese installer
+        shell: pwsh
+        run: Copy-Item assets/conf/ChineseSimplified.isl 'C:/Program Files (x86)/Inno Setup 6/Default.isl' -Force
+      - name: Write embedded metadata
+        env:
+          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
+          PACKAGE_TYPE: installer
+        run: |
+          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
+          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
+      - name: Package Windows installer
+        shell: pwsh
+        working-directory: assets/conf
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          pupnet -r win-x64 -k setup -y -o Pollen.win.x64.installer.exe --app-version $env:APP_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifest = Join-Path $env:TEMP 'KuiperZone.PupNet/cc.tiouoo.Pollen-win-x64-Release-Setup/Pollen.Desktop.iss'
+          $content = (Get-Content $manifest -Raw).Replace('AllowNoIcons=yes', "AllowNoIcons=yes`r`nDisableDirPage=yes")
+          [IO.File]::WriteAllText($manifest, $content)
+          iscc $manifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive Deploy/OUT/Pollen.win.x64.installer.exe Deploy/OUT/Pollen.win.x64.installer.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-win-installer
+          path: assets/conf/Deploy/OUT/Pollen.win.x64.installer.zip
+          if-no-files-found: error
+
+  mac-dmg:
+    needs: prepare
+    if: needs.prepare.outputs.enabled == 'true'
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Update submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
+      - name: Write embedded metadata
+        env:
+          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
+          PACKAGE_TYPE: app
+        run: |
+          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
+          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
+      - name: Build macOS bundle
+        env:
+          ARCH: ${{ matrix.arch }}
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          rid="osx-${ARCH:?ARCH is required}"
+          version="${APP_VERSION:?APP_VERSION is required}"
+          # Apple bundle versions have at most three components; .NET rolling versions have four.
+          IFS=. read -r major minor patch minute <<< "$version"
+          bundle_version="$version"
+          [ -z "${minute:-}" ] || bundle_version="${major}.${minor}.$((10#$patch * 60 + 10#$minute))"
+          dotnet restore src/Pollen.Desktop/Pollen.Desktop.csproj -r "$rid"
+          dotnet msbuild src/Pollen.Desktop/Pollen.Desktop.csproj -t:BundleApp \
+            -p:RuntimeIdentifier="$rid" -p:Configuration=Release -p:SelfContained=true \
+            -p:Version="$version" -p:CFBundleVersion="$bundle_version" -p:CFBundleShortVersionString="$bundle_version" \
+            -p:DebugType=none -p:DebugSymbols=false
+          app="src/Pollen.Desktop/bin/Release/net10.0/${rid}/publish/Pollen.app"
+          cp assets/icon-pattern-ahadow-border.icns "$app/Contents/Resources/"
+          /usr/bin/ditto -c -k --keepParent "$app" "Pollen.osx.mac.${ARCH}.app.zip"
+      - name: Untap untrusted Homebrew tap
+        run: brew untap aws/tap || true
+      - uses: L-Super/create-dmg-actions@v1.1.0
+        with:
+          dmg_name: Pollen.osx.mac.${{ matrix.arch }}
+          src_dir: src/Pollen.Desktop/bin/Release/net10.0/osx-${{ matrix.arch }}/publish/Pollen.app
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-mac-${{ matrix.arch }}
+          path: |
+            Pollen.osx.mac.${{ matrix.arch }}.dmg
+            Pollen.osx.mac.${{ matrix.arch }}.app.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, linux-package, win-exe, win-installer, mac-dmg]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: package-*
+          path: Pollen.Release
+          merge-multiple: true
+      - name: Generate version-specific commit log
+        uses: tiouoo/tiller/changelog@main
+        with:
+          base-ref: ${{ inputs.channel == 'release' && (needs.prepare.outputs.previous_tag || 'none') || 'auto' }}
+          head-ref: ${{ needs.prepare.outputs.sha }}
+          initial-history: ${{ inputs.channel == 'release' && 'all' || 'recent' }}
+          output: RELEASE_CHANGELOG.md
+          empty-message: 自上一个正式版以来没有新的提交。
+      - name: Write release body and checksums
+        env:
+          TITLE: ${{ needs.prepare.outputs.title }}
+          RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          {
+            printf '%s\n发布日期：%s\n基准提交：`%s`\n\n' "$TITLE" "$RELEASE_DATE" "$SOURCE_SHA"
+            cat RELEASE_CHANGELOG.md
+          } > RELEASE_BODY.md
+          (cd Pollen.Release && sha256sum *.zip *.dmg *.AppImage *.deb *.rpm > SHA256SUMS)
+      - name: Replace moving release
+        if: inputs.channel != 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          # Distinguish an absent release from an authentication/network error.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" > releases.json
+          if jq -e --arg tag "$TAG" '.[] | select(.tag_name == $tag)' releases.json >/dev/null; then
+            gh release delete "$TAG" --cleanup-tag --yes
+          fi
+          if git ls-remote --exit-code origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            git push origin ":refs/tags/$TAG"
+          fi
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.title }}
+          target_commitish: ${{ needs.prepare.outputs.sha }}
+          prerelease: ${{ inputs.channel != 'release' }}
+          make_latest: ${{ inputs.channel == 'release' && 'true' || 'false' }}
+          body_path: RELEASE_BODY.md
+          fail_on_unmatched_files: true
+          files: |
+            Pollen.Release/*.zip
+            Pollen.Release/*.dmg
+            Pollen.Release/*.AppImage
+            Pollen.Release/*.deb
+            Pollen.Release/*.rpm
+            Pollen.Release/SHA256SUMS
+      - name: Bundle all packages
+        env:
+          VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: (cd Pollen.Release && zip -qr "../Pollen.v${VERSION}.all-builds.zip" .)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Pollen.v${{ needs.prepare.outputs.app_version }}.all-builds
+          path: Pollen.v${{ needs.prepare.outputs.app_version }}.all-builds.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-body
+          path: RELEASE_BODY.md
+          if-no-files-found: error
+
+  cnb:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-body
+      - name: Link package downloads
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          { printf '> 安装包下载：[GitHub Release](%s/%s/releases/tag/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$TAG"; cat RELEASE_BODY.md; } > RELEASE_SYNC_BODY.md
+      - uses: tiouoo/tiller/cnb-tag@main
+        with:
+          token: ${{ secrets.CNB_TOKEN }}
+          repository: ${{ vars.CNB_REPOSITORY || 'tiouo/pollen' }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          commit: ${{ needs.prepare.outputs.sha }}
+      - uses: tiouoo/tiller/cnb-release@main
+        with:
+          token: ${{ secrets.CNB_TOKEN }}
+          repository: ${{ vars.CNB_REPOSITORY || 'tiouo/pollen' }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.title }}
+          body-file: RELEASE_SYNC_BODY.md
+          prerelease: ${{ inputs.channel != 'release' }}
+          make-latest: ${{ inputs.channel == 'release' }}
+
+  gitcode:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-body
+      - name: Link package downloads
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          { printf '> 安装包下载：[GitHub Release](%s/%s/releases/tag/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$TAG"; cat RELEASE_BODY.md; } > RELEASE_SYNC_BODY.md
+      - uses: tiouoo/tiller/gitcode-tag@main
+        with:
+          token: ${{ secrets.GITCODE_TOKEN }}
+          repository: ${{ vars.GITCODE_REPOSITORY || 'tiouo/Pollen' }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          commit: ${{ needs.prepare.outputs.sha }}
+      - uses: tiouoo/tiller/gitcode-release@main
+        with:
+          token: ${{ secrets.GITCODE_TOKEN }}
+          repository: ${{ vars.GITCODE_REPOSITORY || 'tiouo/Pollen' }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.title }}
+          body-file: RELEASE_SYNC_BODY.md
+          prerelease: ${{ inputs.channel != 'release' }}
+
+  aur:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm openssh git curl
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Prepare AUR package
+        id: package
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          package="pollen-${CHANNEL}-bin"
+          provides="'pollen-${CHANNEL}=${APP_VERSION}'"
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Pollen.linux.x64.AppImage"
+          sha=SKIP
+          mkdir -p dist/aur
+          cp assets/icon-pattern-128.png dist/aur/pollen.png
+          cp packaging/linux/pollen.desktop dist/aur/
+          cp LICENSE dist/aur/
+          if [ "$CHANNEL" = release ]; then
+            package=pollen-bin
+            provides="'pollen=${APP_VERSION}' 'pollen-mc=${APP_VERSION}' 'pollen-stable=${APP_VERSION}' 'pollen-stable-bin=${APP_VERSION}'"
+            curl -fL --retry 3 -o dist/Pollen.AppImage "$url"
+            sha=$(sha256sum dist/Pollen.AppImage | cut -d' ' -f1)
+          fi
+          sed -e "s|@PACKAGE@|$package|g" -e "s|@VERSION@|$APP_VERSION|g" \
+              -e "s|@URL@|$url|g" -e "s|@PROVIDES@|$provides|g" \
+              -e "s|@SHA@|$sha|g" packaging/aur/PKGBUILD.in > dist/aur/PKGBUILD
+          echo "name=$package" >> "$GITHUB_OUTPUT"
+      - uses: tiouoo/tiller/aur@main
+        with:
+          package-directory: dist/aur
+          package-name: ${{ steps.package.outputs.name }}
+          ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          username: ${{ secrets.AUR_USERNAME }}
+          commit-message: Update ${{ steps.package.outputs.name }} to ${{ needs.prepare.outputs.app_version }}
