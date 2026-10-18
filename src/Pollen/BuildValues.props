@@ -1,0 +1,16 @@
+<Project>
+    <PropertyGroup>
+        <PollenBaseVersion Condition="'$(PollenBaseVersion)' == ''">1.0.0</PollenBaseVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <StandardBuildValue Include="Pollen.Type" EnvironmentVariable="POLLEN_BUILD_TYPE" />
+        <StandardBuildValue Include="Pollen.Version" EnvironmentVariable="POLLEN_BUILD_VERSION" />
+        <StandardBuildValue Include="Pollen.BuildTime" EnvironmentVariable="POLLEN_BUILD_TIME" />
+        <StandardBuildValue Include="Pollen.Action" EnvironmentVariable="POLLEN_BUILD_ACTION" />
+        <StandardBuildValue Include="Pollen.Commit" EnvironmentVariable="POLLEN_BUILD_COMMIT" />
+        <StandardBuildValue Include="Pollen.Timestamp" EnvironmentVariable="POLLEN_BUILD_TIMESTAMP" />
+        <StandardBuildValue Include="Pollen.VersionTitle" EnvironmentVariable="POLLEN_BUILD_VERSION_TITLE" />
+        <StandardBuildValue Include="Pollen.PackageType" EnvironmentVariable="POLLEN_PACKAGE_TYPE" />
+        <StandardBuildValue Include="Pollen.BaseVersion" Value="$(PollenBaseVersion)" />
+    </ItemGroup>
+</Project>

@@ -18,11 +18,11 @@ jobs:
       - id: version
         uses: tiouoo/tiller/rolling-version@main
         with:
-          epoch: '2026-07-10 00:00:00'
+          epoch: '2026-10-18 00:00:00'
       - id: source
         run: |
           echo "commit=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          echo "base_version=$(tr -d '[:space:]' < assets/conf/version.txt)" >> "$GITHUB_OUTPUT"
+          echo "base_version=$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")" >> "$GITHUB_OUTPUT"
           echo "timestamp=$(TZ=Asia/Shanghai date +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
       - id: metadata
         uses: tiouoo/tiller/metadata@main
@@ -33,6 +33,15 @@ jobs:
           title: build-pr-${{ github.event.pull_request.number }}-${{ steps.version.outputs.version }}-${{ github.run_id }}-${{ steps.source.outputs.commit }}
           timestamp: ${{ steps.source.outputs.timestamp }}
   build:
+    env:
+      POLLEN_BUILD_TYPE: ${{ fromJSON(needs.prepare.outputs.version_json)['type'] }}
+      POLLEN_BUILD_VERSION: ${{ fromJSON(needs.prepare.outputs.version_json)['version'] }}
+      POLLEN_BUILD_TIME: ${{ fromJSON(needs.prepare.outputs.version_json)['build-time'] }}
+      POLLEN_BUILD_ACTION: ${{ fromJSON(needs.prepare.outputs.version_json)['action'] }}
+      POLLEN_BUILD_COMMIT: ${{ fromJSON(needs.prepare.outputs.version_json)['commit'] }}
+      POLLEN_BUILD_TIMESTAMP: ${{ fromJSON(needs.prepare.outputs.version_json)['timestamp'] }}
+      POLLEN_BUILD_VERSION_TITLE: ${{ fromJSON(needs.prepare.outputs.version_json)['version_title'] }}
+      POLLEN_PACKAGE_TYPE: pr
     needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
@@ -50,14 +59,6 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Write embedded metadata
-        shell: bash
-        env:
-          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
-          PACKAGE_TYPE: pr
-        run: |
-          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
-          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
       - name: Build PR
         shell: bash
         env:

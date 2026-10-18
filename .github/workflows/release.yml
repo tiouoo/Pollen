@@ -66,7 +66,7 @@ jobs:
         id: rolling
         uses: tiouoo/tiller/rolling-version@main
         with:
-          epoch: '2026-07-10 00:00:00'
+          epoch: '2026-10-18 00:00:00'
       - name: Select channel values
         if: steps.source.outputs.enabled == 'true'
         id: values
@@ -87,7 +87,7 @@ jobs:
             version="$ROLLING_VERSION"
             tag="publish-${CHANNEL}"
             title="build-${CHANNEL}-${version}-${GITHUB_RUN_ID}-${COMMIT}"
-            base_version="$(tr -d '[:space:]' < assets/conf/version.txt)"
+            base_version="$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")"
           fi
           {
             echo "app_version=$version"
@@ -116,6 +116,15 @@ jobs:
           git push origin "refs/tags/$TAG"
 
   linux-package:
+    env:
+      POLLEN_BUILD_TYPE: ${{ fromJSON(needs.prepare.outputs.version_json)['type'] }}
+      POLLEN_BUILD_VERSION: ${{ fromJSON(needs.prepare.outputs.version_json)['version'] }}
+      POLLEN_BUILD_TIME: ${{ fromJSON(needs.prepare.outputs.version_json)['build-time'] }}
+      POLLEN_BUILD_ACTION: ${{ fromJSON(needs.prepare.outputs.version_json)['action'] }}
+      POLLEN_BUILD_COMMIT: ${{ fromJSON(needs.prepare.outputs.version_json)['commit'] }}
+      POLLEN_BUILD_TIMESTAMP: ${{ fromJSON(needs.prepare.outputs.version_json)['timestamp'] }}
+      POLLEN_BUILD_VERSION_TITLE: ${{ fromJSON(needs.prepare.outputs.version_json)['version_title'] }}
+      POLLEN_PACKAGE_TYPE: ${{ matrix.kind }}
     needs: prepare
     if: needs.prepare.outputs.enabled == 'true'
     runs-on: ubuntu-22.04
@@ -136,13 +145,6 @@ jobs:
           git submodule update --init --recursive
           git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
           git submodule status --recursive
-      - name: Write embedded metadata
-        env:
-          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
-          PACKAGE_TYPE: ${{ matrix.kind }}
-        run: |
-          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
-          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
       - name: Install packaging dependencies
         run: |
           dotnet tool install -g KuiperZone.PupNet --version 1.8.0
@@ -164,6 +166,15 @@ jobs:
           if-no-files-found: error
 
   win-exe:
+    env:
+      POLLEN_BUILD_TYPE: ${{ fromJSON(needs.prepare.outputs.version_json)['type'] }}
+      POLLEN_BUILD_VERSION: ${{ fromJSON(needs.prepare.outputs.version_json)['version'] }}
+      POLLEN_BUILD_TIME: ${{ fromJSON(needs.prepare.outputs.version_json)['build-time'] }}
+      POLLEN_BUILD_ACTION: ${{ fromJSON(needs.prepare.outputs.version_json)['action'] }}
+      POLLEN_BUILD_COMMIT: ${{ fromJSON(needs.prepare.outputs.version_json)['commit'] }}
+      POLLEN_BUILD_TIMESTAMP: ${{ fromJSON(needs.prepare.outputs.version_json)['timestamp'] }}
+      POLLEN_BUILD_VERSION_TITLE: ${{ fromJSON(needs.prepare.outputs.version_json)['version_title'] }}
+      POLLEN_PACKAGE_TYPE: portable
     needs: prepare
     if: needs.prepare.outputs.enabled == 'true'
     runs-on: windows-latest
@@ -179,13 +190,6 @@ jobs:
         run: |
           git submodule update --init --recursive
           git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
-      - name: Write embedded metadata
-        env:
-          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
-          PACKAGE_TYPE: portable
-        run: |
-          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
-          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
       - name: Package Windows portable
         shell: pwsh
         env:
@@ -202,6 +206,15 @@ jobs:
           if-no-files-found: error
 
   win-installer:
+    env:
+      POLLEN_BUILD_TYPE: ${{ fromJSON(needs.prepare.outputs.version_json)['type'] }}
+      POLLEN_BUILD_VERSION: ${{ fromJSON(needs.prepare.outputs.version_json)['version'] }}
+      POLLEN_BUILD_TIME: ${{ fromJSON(needs.prepare.outputs.version_json)['build-time'] }}
+      POLLEN_BUILD_ACTION: ${{ fromJSON(needs.prepare.outputs.version_json)['action'] }}
+      POLLEN_BUILD_COMMIT: ${{ fromJSON(needs.prepare.outputs.version_json)['commit'] }}
+      POLLEN_BUILD_TIMESTAMP: ${{ fromJSON(needs.prepare.outputs.version_json)['timestamp'] }}
+      POLLEN_BUILD_VERSION_TITLE: ${{ fromJSON(needs.prepare.outputs.version_json)['version_title'] }}
+      POLLEN_PACKAGE_TYPE: installer
     needs: prepare
     if: needs.prepare.outputs.enabled == 'true'
     runs-on: windows-latest
@@ -227,13 +240,6 @@ jobs:
       - name: Use Simplified Chinese installer
         shell: pwsh
         run: Copy-Item assets/conf/ChineseSimplified.isl 'C:/Program Files (x86)/Inno Setup 6/Default.isl' -Force
-      - name: Write embedded metadata
-        env:
-          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
-          PACKAGE_TYPE: installer
-        run: |
-          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
-          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
       - name: Package Windows installer
         shell: pwsh
         working-directory: assets/conf
@@ -255,6 +261,15 @@ jobs:
           if-no-files-found: error
 
   mac-dmg:
+    env:
+      POLLEN_BUILD_TYPE: ${{ fromJSON(needs.prepare.outputs.version_json)['type'] }}
+      POLLEN_BUILD_VERSION: ${{ fromJSON(needs.prepare.outputs.version_json)['version'] }}
+      POLLEN_BUILD_TIME: ${{ fromJSON(needs.prepare.outputs.version_json)['build-time'] }}
+      POLLEN_BUILD_ACTION: ${{ fromJSON(needs.prepare.outputs.version_json)['action'] }}
+      POLLEN_BUILD_COMMIT: ${{ fromJSON(needs.prepare.outputs.version_json)['commit'] }}
+      POLLEN_BUILD_TIMESTAMP: ${{ fromJSON(needs.prepare.outputs.version_json)['timestamp'] }}
+      POLLEN_BUILD_VERSION_TITLE: ${{ fromJSON(needs.prepare.outputs.version_json)['version_title'] }}
+      POLLEN_PACKAGE_TYPE: app
     needs: prepare
     if: needs.prepare.outputs.enabled == 'true'
     runs-on: macos-latest
@@ -274,13 +289,6 @@ jobs:
         run: |
           git submodule update --init --recursive
           git submodule foreach --recursive 'branch=$(git config -f "$toplevel/.gitmodules" --get "submodule.$name.branch" || echo main); git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch"'
-      - name: Write embedded metadata
-        env:
-          VERSION_JSON: ${{ needs.prepare.outputs.version_json }}
-          PACKAGE_TYPE: app
-        run: |
-          printf '%s\n' "${VERSION_JSON:?VERSION_JSON is required}" > assets/conf/version-ci.txt
-          printf '%s\n' "${PACKAGE_TYPE:?PACKAGE_TYPE is required}" > assets/conf/package-type.txt
       - name: Build macOS bundle
         env:
           ARCH: ${{ matrix.arch }}
