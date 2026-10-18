@@ -234,7 +234,7 @@ jobs:
       - name: Install packaging dependencies
         shell: pwsh
         run: |
-          choco install innosetup -y
+          choco install innosetup --version=6.7.3 -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           'C:/Program Files (x86)/Inno Setup 6' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Package Windows installer

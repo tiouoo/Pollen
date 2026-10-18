@@ -78,7 +78,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install innosetup -y
+          choco install innosetup --version=6.7.3 -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /DAppVersion=9.8.7 "/DPublishDir=$((Resolve-Path dist).Path)" assets/conf/Pollen.Desktop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
