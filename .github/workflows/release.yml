@@ -433,6 +433,8 @@ jobs:
           make-latest: ${{ inputs.channel == 'release' }}
 
   gitcode:
+    # GitCode mirror repositories reject Release writes. Enable only for a writable, non-mirror repository.
+    if: vars.GITCODE_RELEASE_ENABLED == 'true'
     needs: [prepare, publish]
     runs-on: ubuntu-latest
     steps:
@@ -448,7 +450,6 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           { printf '> 安装包下载：[GitHub Release](%s/%s/releases/tag/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$TAG"; cat RELEASE_BODY.md; } > RELEASE_SYNC_BODY.md
-      # GitCode 镜像仓库由镜像同步标签；这里只更新 Release。
       - uses: tiouoo/tiller/gitcode-release@main
         with:
           token: ${{ secrets.GITCODE_TOKEN }}
