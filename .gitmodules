@@ -6,3 +6,7 @@
 	path = ovo.dotnet
 	url = https://github.com/tiouoo/ovo.dotnet.git
 	branch = main
+[submodule "pollen.localization"]
+	path = pollen.localization
+	url = https://github.com/tiouoo/pollen.localization.git
+	branch = main
