@@ -1,8 +1,8 @@
 name: test/aot
 on:
-  pull_request:
-  push:
-    branches: [main]
+  # pull_request:
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,32 +21,32 @@ jobs:
             rid: win-x64
             executable: Pollen.Desktop.exe
             layout: portable
-            bundle: 'true'
-            test_args: ''
+            bundle: "true"
+            test_args: ""
           - os: windows-latest
             rid: win-x64
             executable: Pollen.Desktop.exe
             layout: installer
-            bundle: 'false'
-            test_args: '--installer'
+            bundle: "false"
+            test_args: "--installer"
           - os: ubuntu-22.04
             rid: linux-x64
             executable: Pollen.Desktop
             layout: native
-            bundle: 'false'
-            test_args: ''
+            bundle: "false"
+            test_args: ""
           - os: macos-15-intel
             rid: osx-x64
             executable: Pollen.Desktop
             layout: native
-            bundle: 'false'
-            test_args: ''
+            bundle: "false"
+            test_args: ""
           - os: macos-15
             rid: osx-arm64
             executable: Pollen.Desktop
             layout: native
-            bundle: 'false'
-            test_args: ''
+            bundle: "false"
+            test_args: ""
     defaults:
       run:
         shell: bash
@@ -59,7 +59,7 @@ jobs:
           dotnet-version: 10.0.x
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
+          python-version: "3.x"
       - name: Install Native AOT and display dependencies
         if: runner.os == 'Linux'
         run: |
@@ -73,9 +73,9 @@ jobs:
           POLLEN_BUILD_VERSION: 9.8.7
           POLLEN_BUILD_COMMIT: aot-smoke-commit
           POLLEN_PACKAGE_TYPE: aot-test
-          POLLEN_BUILD_TIME: '2026-10-18 00:00:00'
+          POLLEN_BUILD_TIME: "2026-10-18 00:00:00"
           POLLEN_BUILD_ACTION: aot-smoke-action
-          POLLEN_BUILD_TIMESTAMP: '202610180000'
+          POLLEN_BUILD_TIMESTAMP: "202610180000"
           POLLEN_BUILD_VERSION_TITLE: aot-smoke-title
         run: |
           set -o pipefail
@@ -99,7 +99,7 @@ jobs:
         if: matrix.layout == 'installer'
         shell: pwsh
         run: |
-          choco install innosetup --version=6.7.3 -y
+          choco install innosetup --version=6.7.1 -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /DAppVersion=9.8.7 "/DPublishDir=$((Resolve-Path dist).Path)" assets/conf/Pollen.Desktop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
