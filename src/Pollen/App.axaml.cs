@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Pollen.Localization;
 using Pollen.ViewModels;
 using Pollen.Views;
 
@@ -18,6 +19,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        LocalizationService.Initialize();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow

@@ -1,8 +1,9 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using System;
+using Pollen.Localization;
 
 namespace Pollen.ViewModels;
 
-public partial class MainViewModel : ViewModelBase
+public class MainViewModel : ViewModelBase
 {
-    [ObservableProperty] public partial string Greeting { get; set; } = "Welcome to Avalonia!";
+    public IObservable<string?> Greeting => LocalizationService.Welcome;
 }

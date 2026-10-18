@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\ovoui.avalonia\src\OvoUi.Lang\OvoUi.Lang.csproj"/>
+        <ProjectReference Include="..\..\ovoui.avalonia\src\OvoUi.Lang.Generator\OvoUi.Lang.Generator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="..\..\pollen.localization\**\*.json"/>
+        <CompilerVisibleProperty Include="MSBuildProjectDirectory"/>
+    </ItemGroup>
+</Project>

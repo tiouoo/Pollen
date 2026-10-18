@@ -1,4 +1,5 @@
-﻿<Solution>
+<Solution>
   <Project Path="Pollen.Desktop/Pollen.Desktop.csproj" />
+  <Project Path="Pollen.Localization/Pollen.Localization.csproj" />
   <Project Path="Pollen/Pollen.csproj" />
 </Solution>
