@@ -1,6 +1,7 @@
 #if POLLEN_WINDOWS_NATIVE_BUNDLE
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -77,7 +78,8 @@ internal static class WindowsNativeBundle
     }
 
     private static Stream OpenResource(Assembly assembly, string name) =>
-        assembly.GetManifestResourceStream(name) ?? throw new InvalidOperationException($"Missing native resource: {name}");
+        new GZipStream(assembly.GetManifestResourceStream(name)
+                       ?? throw new InvalidOperationException($"Missing native resource: {name}"), CompressionMode.Decompress);
 
     private static bool MatchesHash(string path, byte[] expected)
     {

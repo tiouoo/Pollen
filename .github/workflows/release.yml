@@ -237,24 +237,17 @@ jobs:
           choco install innosetup -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           'C:/Program Files (x86)/Inno Setup 6' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          dotnet tool install -g KuiperZone.PupNet --version 1.8.0
-      - name: Use Simplified Chinese installer
-        shell: pwsh
-        run: Copy-Item assets/conf/ChineseSimplified.isl 'C:/Program Files (x86)/Inno Setup 6/Default.isl' -Force
       - name: Package Windows installer
         shell: pwsh
-        working-directory: assets/conf
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
-          pupnet -r win-x64 -k setup -y -o Pollen.win.x64.installer.exe --app-version $env:APP_VERSION
+          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $manifest = Join-Path $env:TEMP 'KuiperZone.PupNet/cc.tiouoo.Pollen-win-x64-Release-Setup/Pollen.Desktop.iss'
-          $content = (Get-Content $manifest -Raw).Replace('AllowNoIcons=yes', "AllowNoIcons=yes`r`nDisableDirPage=yes")
-          [IO.File]::WriteAllText($manifest, $content)
-          iscc $manifest
+          if ((Get-ChildItem dist -Recurse -File).Count -ne 1) { throw 'Windows installer publish must contain only the executable.' }
+          iscc "/DAppVersion=$env:APP_VERSION" "/DPublishDir=$((Resolve-Path dist).Path)" assets/conf/Pollen.Desktop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Compress-Archive Deploy/OUT/Pollen.win.x64.installer.exe Deploy/OUT/Pollen.win.x64.installer.zip
+          Compress-Archive assets/conf/Deploy/OUT/Pollen.win.x64.installer.exe assets/conf/Deploy/OUT/Pollen.win.x64.installer.zip
       - uses: actions/upload-artifact@v7
         with:
           name: package-win-installer
@@ -380,7 +373,7 @@ jobs:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: ${{ needs.prepare.outputs.title }}
           target_commitish: ${{ needs.prepare.outputs.sha }}
-          prerelease: ${{ inputs.channel != 'release' }}
+          prerelease: false
           make_latest: ${{ inputs.channel == 'release' && 'true' || 'false' }}
           body_path: RELEASE_BODY.md
           fail_on_unmatched_files: true

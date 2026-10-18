@@ -6,6 +6,8 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <PublishAot Condition="'$(Configuration)' == 'Release'">true</PublishAot>
+        <TrimMode Condition="'$(Configuration)' == 'Release'">full</TrimMode>
+        <OptimizationPreference Condition="'$(Configuration)' == 'Release'">Size</OptimizationPreference>
         <IsAotCompatible>true</IsAotCompatible>
         <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
         <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>

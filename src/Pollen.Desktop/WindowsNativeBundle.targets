@@ -1,4 +1,43 @@
 <Project>
+    <!-- Compress only the native payload; the executable itself remains a Native AOT binary. -->
+    <UsingTask TaskName="PollenCompressNativeAssets" TaskFactory="RoslynCodeTaskFactory"
+               AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+        <ParameterGroup>
+            <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+            <OutputDirectory ParameterType="System.String" Required="true" />
+            <CompressedFiles ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+        </ParameterGroup>
+        <Task>
+            <Using Namespace="System.IO" />
+            <Using Namespace="System.IO.Compression" />
+            <Using Namespace="System.Collections.Generic" />
+            <Using Namespace="System.Linq" />
+            <Code Type="Fragment" Language="cs"><![CDATA[
+                Directory.CreateDirectory(OutputDirectory);
+                var compressed = new List<Microsoft.Build.Framework.ITaskItem>();
+                foreach (var file in Files)
+                {
+                    var name = Path.GetFileName(file.ItemSpec);
+                    var path = Path.Combine(OutputDirectory, name + ".gz");
+                    using (var buffer = new MemoryStream())
+                    {
+                        using (var source = File.OpenRead(file.ItemSpec))
+                        using (var gzip = new GZipStream(buffer, CompressionLevel.Optimal, leaveOpen: true))
+                            source.CopyTo(gzip);
+                        var bytes = buffer.ToArray();
+                        // Preserve timestamps for unchanged payloads so incremental builds stay incremental.
+                        if (!File.Exists(path) || !File.ReadAllBytes(path).SequenceEqual(bytes))
+                            File.WriteAllBytes(path, bytes);
+                    }
+                    var item = new Microsoft.Build.Utilities.TaskItem(path);
+                    item.SetMetadata("LogicalName", "Pollen.Native." + name);
+                    compressed.Add(item);
+                }
+                CompressedFiles = compressed.ToArray();
+            ]]></Code>
+        </Task>
+    </UsingTask>
+
     <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('win-'))">
         <PollenWindowsNativeBundle>true</PollenWindowsNativeBundle>
         <DefineConstants>$(DefineConstants);POLLEN_WINDOWS_NATIVE_BUNDLE</DefineConstants>
@@ -13,10 +52,15 @@
                                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference' and '%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
             <_PollenDocumentationCandidate Include="@(_PollenProjectReference->'%(RootDir)%(Directory)%(Filename).xml')" />
             <_PollenBundledDocumentation Include="@(_PollenDocumentationCandidate)" Condition="Exists('%(Identity)')" KeepDuplicates="false" />
-            <EmbeddedResource Include="@(_PollenBundledNative)" LogicalName="Pollen.Native.%(Filename)%(Extension)" />
             <EmbeddedResource Include="@(_PollenBundledDocumentation)" LogicalName="Pollen.Documentation.%(Filename)%(Extension)" />
         </ItemGroup>
         <Error Condition="'@(_PollenBundledNative)' == ''" Text="No Windows native dependencies were found for the single executable." />
+        <PollenCompressNativeAssets Files="@(_PollenBundledNative)" OutputDirectory="$(IntermediateOutputPath)native-bundle">
+            <Output TaskParameter="CompressedFiles" ItemName="_PollenCompressedNative" />
+        </PollenCompressNativeAssets>
+        <ItemGroup>
+            <EmbeddedResource Include="@(_PollenCompressedNative)" />
+        </ItemGroup>
     </Target>
 
     <Target Name="PollenFilterPublishFiles" AfterTargets="ComputeFilesToPublish" Condition="'$(Configuration)' == 'Release'">
