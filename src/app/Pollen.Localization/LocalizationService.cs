@@ -7,14 +7,14 @@ public static class LocalizationService
 {
     private static readonly ILangManager[] Managers =
     [
-        AppLanguageManager.Instance
+        Localization.Managers.AppLanguageManager.Instance
     ];
 
     public static IReadOnlyList<ILangManager> RegisteredManagers => Managers;
 
-    public static CultureInfo CurrentCulture => AppLanguageManager.Instance.CurrentCulture;
+    public static CultureInfo CurrentCulture => Localization.Managers.AppLanguageManager.Instance.CurrentCulture;
 
-    public static IObservable<string?> Welcome => AppLanguageManager.Instance.Welcome;
+    public static IObservable<string?> Welcome => Localization.Managers.AppLanguageManager.Instance.Welcome;
 
     public static void Initialize(CultureInfo? culture = null) =>
         SetCulture(culture ?? CultureInfo.CurrentUICulture);
