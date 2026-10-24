@@ -470,3 +470,6 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 
 .vs/
+
+
+.temp/
