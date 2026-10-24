@@ -17,10 +17,10 @@ internal static class Program
 
         try
         {
-#if POLLEN_WINDOWS_NATIVE_BUNDLE
-            WindowsNativeBundle.Initialize();
-#endif
-            return Pollen.Desktop.Program.BuildAvaloniaApp()
+            return AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .LogToTrace()
                 .AfterSetup(builder => AotSmokeTest.Attach(builder, args[0]))
                 .StartWithClassicDesktopLifetime([]);
         }
