@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="..\..\pollen.localization\**\*.json"/>
+        <AdditionalFiles Link="Languages\%(RecursiveDir)%(Filename)%(Extension)" Include="..\..\pollen.localization\**\*.json"/>
         <CompilerVisibleProperty Include="MSBuildProjectDirectory"/>
     </ItemGroup>
 </Project>

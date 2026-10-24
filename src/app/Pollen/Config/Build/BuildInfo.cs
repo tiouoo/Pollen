@@ -1,8 +1,7 @@
 using Standard.Build;
 
-namespace Pollen;
+namespace Pollen.Config.Build;
 
-/// <summary>Build metadata injected into the Pollen assembly; local builds use development defaults.</summary>
 public static class BuildInfo
 {
     private static readonly AssemblyBuildValues Values = new(typeof(BuildInfo).Assembly);

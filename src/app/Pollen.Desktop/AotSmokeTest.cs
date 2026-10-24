@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Pollen.Config.Build;
 using Pollen.Localization;
 using Pollen.Views;
 
