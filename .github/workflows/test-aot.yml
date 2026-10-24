@@ -80,7 +80,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p test-results/aot
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" \
+          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" \
             --self-contained true -p:Version=9.8.7 -p:PollenBaseVersion=1.0.0 \
             -p:DebugType=none -p:DebugSymbols=false -p:TreatWarningsAsErrors=true \
             -p:PollenWindowsNativeBundle="$NATIVE_BUNDLE" \

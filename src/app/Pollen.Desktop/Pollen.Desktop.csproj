@@ -15,7 +15,7 @@
         <PublishDocumentationFiles Condition="'$(Configuration)' == 'Release'">false</PublishDocumentationFiles>
         <AssemblyTitle>Pollen</AssemblyTitle>
         <Title>Pollen</Title>
-        <ApplicationIcon>..\..\assets\icon-pattern.ico</ApplicationIcon>
+        <ApplicationIcon>..\..\..\assets\icon-pattern.ico</ApplicationIcon>
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
         <RepositoryUrl>https://github.com/tiouoo/Pollen</RepositoryUrl>
         <CFBundleName>Pollen</CFBundleName>

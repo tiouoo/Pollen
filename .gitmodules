@@ -1,16 +1,16 @@
 [submodule "ovoui.avalonia"]
-	path = ovoui.avalonia
+	path = src/ovoui.avalonia
 	url = https://github.com/tiouoo/ovoui.avalonia.git
 	branch = main
 [submodule "ovo.dotnet"]
-	path = ovo.dotnet
+	path = src/ovo.dotnet
 	url = https://github.com/tiouoo/ovo.dotnet.git
 	branch = main
 [submodule "pollen.localization"]
-	path = pollen.localization
+	path = src/pollen.localization
 	url = https://github.com/tiouoo/pollen.localization.git
 	branch = main
 [submodule "holium"]
-	path = holium
+	path = src/holium
 	url = https://github.com/tiouoo/holium.git
 	branch = main

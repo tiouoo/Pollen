@@ -22,7 +22,7 @@ jobs:
       - id: source
         run: |
           echo "commit=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          echo "base_version=$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")" >> "$GITHUB_OUTPUT"
+          echo "base_version=$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/app/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")" >> "$GITHUB_OUTPUT"
           echo "timestamp=$(TZ=Asia/Shanghai date +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
       - id: metadata
         uses: tiouoo/tiller/metadata@main
@@ -68,7 +68,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
           RID: ${{ matrix.rid }}
         run: |
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" --self-contained true -p:Version="$APP_VERSION" -p:DebugType=none -p:DebugSymbols=false -o dist
+          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" --self-contained true -p:Version="$APP_VERSION" -p:DebugType=none -p:DebugSymbols=false -o dist
           tar -czf "Pollen.${RID}.PR.tar.gz" -C dist .
       - uses: actions/upload-artifact@v7
         with:

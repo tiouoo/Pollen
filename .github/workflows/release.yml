@@ -87,7 +87,7 @@ jobs:
             version="$ROLLING_VERSION"
             tag="publish-${CHANNEL}"
             title="build-${CHANNEL}-${version}-${GITHUB_RUN_ID}-${COMMIT}"
-            base_version="$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")"
+            base_version="$(python3 -c "import xml.etree.ElementTree as E; print(E.parse('src/app/Pollen/BuildValues.props').findtext('./PropertyGroup/PollenBaseVersion'))")"
           fi
           {
             echo "app_version=$version"
@@ -195,7 +195,7 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
+          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-ChildItem dist -Recurse -File).Count -ne 1) { throw 'Windows portable publish must contain only the executable.' }
           Rename-Item dist/Pollen.Desktop.exe Pollen.win.x64.portable.exe
@@ -242,7 +242,7 @@ jobs:
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
         run: |
-          dotnet publish src/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -p:PollenWindowsNativeBundle=false -o dist
+          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 --self-contained true -p:Version=$env:APP_VERSION -p:DebugType=none -p:DebugSymbols=false -p:PollenWindowsNativeBundle=false -o dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (!(Test-Path dist/Pollen.Desktop.exe) -or !(Get-ChildItem dist -Filter *.dll)) { throw 'Windows installer publish must contain the executable and native DLLs.' }
           if (Get-ChildItem dist -Recurse -Filter *.pdb) { throw 'Windows installer publish must not contain PDB files.' }
@@ -299,12 +299,12 @@ jobs:
           IFS=. read -r major minor patch minute <<< "$version"
           bundle_version="$version"
           [ -z "${minute:-}" ] || bundle_version="${major}.${minor}.$((10#$patch * 60 + 10#$minute))"
-          dotnet restore src/Pollen.Desktop/Pollen.Desktop.csproj -r "$rid" -p:Configuration=Release
-          dotnet msbuild src/Pollen.Desktop/Pollen.Desktop.csproj -t:BundleApp \
+          dotnet restore src/app/Pollen.Desktop/Pollen.Desktop.csproj -r "$rid" -p:Configuration=Release
+          dotnet msbuild src/app/Pollen.Desktop/Pollen.Desktop.csproj -t:BundleApp \
             -p:RuntimeIdentifier="$rid" -p:Configuration=Release -p:SelfContained=true \
             -p:Version="$version" -p:CFBundleVersion="$bundle_version" -p:CFBundleShortVersionString="$bundle_version" \
             -p:DebugType=none -p:DebugSymbols=false
-          app="src/Pollen.Desktop/bin/Release/net10.0/${rid}/publish/Pollen.app"
+          app="src/app/Pollen.Desktop/bin/Release/net10.0/${rid}/publish/Pollen.app"
           cp assets/icon-pattern-ahadow-border.icns "$app/Contents/Resources/"
           /usr/bin/ditto -c -k --keepParent "$app" "Pollen.osx.mac.${ARCH}.app.zip"
       - name: Untap untrusted Homebrew tap
@@ -312,7 +312,7 @@ jobs:
       - uses: L-Super/create-dmg-actions@v1.1.0
         with:
           dmg_name: Pollen.osx.mac.${{ matrix.arch }}
-          src_dir: src/Pollen.Desktop/bin/Release/net10.0/osx-${{ matrix.arch }}/publish/Pollen.app
+          src_dir: src/app/Pollen.Desktop/bin/Release/net10.0/osx-${{ matrix.arch }}/publish/Pollen.app
       - uses: actions/upload-artifact@v7
         with:
           name: package-mac-${{ matrix.arch }}

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/app/Pollen.Desktop/Pollen.Desktop.csproj" />
+  <Project Path="src/app/Pollen.Localization/Pollen.Localization.csproj" />
+  <Project Path="src/app/Pollen/Pollen.csproj" />
+</Solution>
