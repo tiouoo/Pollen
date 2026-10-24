@@ -1,12 +1,17 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:Pollen.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="using:Pollen.Views"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="Pollen.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="Pollen">
-        <views:MainView />
-</Window>
+<ovo:OvoTabWindow
+    Icon="/Assets/Icon-Pattern.ico"
+    Title="Pollen"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d"
+    ovo:OvoTitleBar.IsFullScreenButtonVisible="False"
+    ovo:OvoTitleBar.IsPinButtonVisible="False"
+    x:Class="Pollen.Views.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ovo="https://github.com/tiouoo/ovoui.avalonia"
+    xmlns:views="using:Pollen.Views"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <views:MainView />
+</ovo:OvoTabWindow>

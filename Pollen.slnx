@@ -42,7 +42,7 @@
     <File Path="src/holium/src/NativeAssets.targets" />
   </Folder>
   <Folder Name="/Tests/">
-    <Project Path="src/app/Pollen.AotTest/Pollen.AotTest.csproj" />
+    <Project Path="src/app/Test/Pollen.AotTest/Pollen.AotTest.csproj" />
   </Folder>
   <Project Path="src/app/Pollen.Desktop/Pollen.Desktop.csproj" />
   <Project Path="src/app/Pollen.Localization/Pollen.Localization.csproj" />

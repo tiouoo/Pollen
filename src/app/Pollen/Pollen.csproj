@@ -12,6 +12,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\ovo.dotnet\src\Standard.Avalonia\Standard.Avalonia.csproj" />
+        <ProjectReference Include="..\..\ovo.dotnet\src\Standard.Mvvm\Standard.Mvvm.csproj" />
+        <ProjectReference Include="..\..\ovoui.avalonia\src\OvoUi.Fonts\OvoUi.Fonts.csproj" />
+        <ProjectReference Include="..\..\ovoui.avalonia\src\OvoUi.SmoothScroll\OvoUi.SmoothScroll.csproj" />
+        <ProjectReference Include="..\..\ovoui.avalonia\src\OvoUi.Tab\OvoUi.Tab.csproj" />
         <ProjectReference Include="..\Pollen.Localization\Pollen.Localization.csproj"/>
         <ProjectReference Include="..\..\ovo.dotnet\src\Standard\Standard.csproj"/>
     </ItemGroup>
@@ -26,6 +31,12 @@
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+        <AvaloniaResource Include="..\..\..\assets\icon-pattern.ico" Link="Assets\Icon-Pattern.ico"/>
+    </ItemGroup>
+    
     <Import Project="BuildValues.props" />
     <Import Project="../../ovo.dotnet/src/Standard/Standard.targets" />
 </Project>
