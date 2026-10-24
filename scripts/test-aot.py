@@ -1,4 +1,4 @@
-"""Run the published desktop application's Native AOT regression checks."""
+"""Run the dedicated test executable's Native AOT regression checks."""
 
 from concurrent.futures import ThreadPoolExecutor
 import argparse
@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--installer", action="store_true", help="Check Windows EXE with native DLL sidecars")
     args = parser.parse_args()
     executable = Path(args.executable).resolve(strict=True)
-    results = Path("test-results/aot/installer" if args.installer else "test-results/aot").resolve()
+    results = Path(".temp/test-results/aot/installer" if args.installer else ".temp/test-results/aot").resolve()
     results.mkdir(parents=True, exist_ok=True)
     report = results / "smoke-test.txt"
     report.unlink(missing_ok=True)
@@ -37,7 +37,7 @@ def main():
         print("FAIL: Windows publish must contain only the executable.", file=sys.stderr)
         return 1
 
-    if list(executable.parent.glob("*.runtimeconfig.json")) or (executable.parent / "Pollen.Desktop.dll").exists():
+    if list(executable.parent.glob("*.runtimeconfig.json")) or (executable.parent / (executable.stem + ".dll")).exists():
         message = "FAIL: expected a Native AOT publish directory, found a managed application."
         report.write_text(message, encoding="utf-8")
         print(message, file=sys.stderr)
@@ -87,7 +87,7 @@ def run_application(executable, environment, results, report, phase):
     report.unlink(missing_ok=True)
     try:
         process = subprocess.run(
-            [str(executable), "--aot-smoke-test", str(report)],
+            [str(executable), str(report)],
             cwd=executable.parent,
             env=environment,
             capture_output=True,

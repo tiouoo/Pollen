@@ -13,9 +13,8 @@ using Pollen.Config.Build;
 using Pollen.Localization;
 using Pollen.Views;
 
-namespace Pollen.Desktop;
+namespace Pollen.AotTest;
 
-// Run inside the published executable, without a separate test framework.
 internal sealed class AotSmokeTest(IClassicDesktopStyleApplicationLifetime desktop, string reportPath)
 {
     private readonly StringBuilder _log = new();

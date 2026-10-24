@@ -19,31 +19,31 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
-            executable: Pollen.Desktop.exe
+            executable: Pollen.AotTest.exe
             layout: portable
             bundle: "true"
             test_args: ""
           - os: windows-latest
             rid: win-x64
-            executable: Pollen.Desktop.exe
+            executable: Pollen.AotTest.exe
             layout: installer
             bundle: "false"
             test_args: "--installer"
           - os: ubuntu-22.04
             rid: linux-x64
-            executable: Pollen.Desktop
+            executable: Pollen.AotTest
             layout: native
             bundle: "false"
             test_args: ""
           - os: macos-15-intel
             rid: osx-x64
-            executable: Pollen.Desktop
+            executable: Pollen.AotTest
             layout: native
             bundle: "false"
             test_args: ""
           - os: macos-15
             rid: osx-arm64
-            executable: Pollen.Desktop
+            executable: Pollen.AotTest
             layout: native
             bundle: "false"
             test_args: ""
@@ -65,7 +65,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang zlib1g-dev xvfb libx11-6 libice6 libsm6 libfontconfig1 libgl1
-      - name: Publish Native AOT application
+      - name: Publish Native AOT test project
         env:
           RID: ${{ matrix.rid }}
           NATIVE_BUNDLE: ${{ matrix.bundle }}
@@ -79,35 +79,41 @@ jobs:
           POLLEN_BUILD_VERSION_TITLE: aot-smoke-title
         run: |
           set -o pipefail
-          mkdir -p test-results/aot
-          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r "$RID" \
+          mkdir -p .temp/test-results/aot
+          dotnet publish src/app/Pollen.AotTest/Pollen.AotTest.csproj -c Release -r "$RID" \
             --self-contained true -p:Version=9.8.7 -p:PollenBaseVersion=1.0.0 \
             -p:DebugType=none -p:DebugSymbols=false -p:TreatWarningsAsErrors=true \
             -p:PollenWindowsNativeBundle="$NATIVE_BUNDLE" \
-            -o dist 2>&1 | tee test-results/aot/publish.txt
-      - name: Run published application checks
+            --artifacts-path .temp/artifacts -o .temp/aot-test 2>&1 | tee .temp/test-results/aot/publish.txt
+      - name: Run published AOT test checks
         env:
           EXECUTABLE: ${{ matrix.executable }}
           TEST_ARGS: ${{ matrix.test_args }}
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a python scripts/test-aot.py "dist/$EXECUTABLE" $TEST_ARGS
+            xvfb-run -a python scripts/test-aot.py ".temp/aot-test/$EXECUTABLE" $TEST_ARGS
           else
-            python scripts/test-aot.py "dist/$EXECUTABLE" $TEST_ARGS
+            python scripts/test-aot.py ".temp/aot-test/$EXECUTABLE" $TEST_ARGS
           fi
+      - name: Publish production application for installer validation
+        if: matrix.layout == 'installer'
+        run: |
+          dotnet publish src/app/Pollen.Desktop/Pollen.Desktop.csproj -c Release -r win-x64 \
+            --self-contained true -p:Version=9.8.7 -p:PollenWindowsNativeBundle=false \
+            --artifacts-path .temp/artifacts -o .temp/desktop-installer
       - name: Compile Windows installer
         if: matrix.layout == 'installer'
         shell: pwsh
         run: |
           choco install innosetup --version=6.7.1 -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /DAppVersion=9.8.7 "/DPublishDir=$((Resolve-Path dist).Path)" assets/conf/Pollen.Desktop.iss
+          & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /DAppVersion=9.8.7 "/DPublishDir=$((Resolve-Path .temp/desktop-installer).Path)" "/DInstallerOutputDir=$((Get-Location).Path)/.temp/installer" assets/conf/Pollen.Desktop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: aot-test-${{ matrix.rid }}-${{ matrix.layout }}
-          path: test-results/aot/
+          path: .temp/test-results/aot/
           retention-days: 7
           if-no-files-found: warn
